@@ -1,0 +1,3265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi des dossiers - Circonscription du Maroni</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            z-index: 0;
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            background: white;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        }
+        
+        .header h1 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #60a5fa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            font-size: 16px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        
+        /* Bouton retour */
+        .back-button {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(96,165,250,0.4);
+            transition: all 0.3s;
+            z-index: 999;
+            border: none;
+        }
+        
+        .back-button.show {
+            display: flex;
+        }
+        
+        .back-button:hover {
+            transform: scale(1.1) rotate(-10deg);
+            box-shadow: 0 6px 20px rgba(96,165,250,0.6);
+        }
+        
+        .breadcrumb {
+            padding: 15px 20px;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .breadcrumb a {
+            color: #60a5fa;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        
+        .breadcrumb span {
+            color: #94a3b8;
+        }
+        
+        .page {
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        .commune-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            padding: 20px 0;
+        }
+        
+        .commune-card {
+            border-radius: 20px;
+            padding: 40px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        
+        .commune-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .commune-card:hover::before {
+            opacity: 1;
+        }
+        
+        .commune-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255,255,255,0.3);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        .commune-card.apatou { background: linear-gradient(135deg, rgba(96,165,250,0.9), rgba(96,165,250,0.6)); }
+        .commune-card.grand-santi { background: linear-gradient(135deg, rgba(52,211,153,0.9), rgba(52,211,153,0.6)); }
+        .commune-card.papaichton { background: linear-gradient(135deg, rgba(248,113,113,0.9), rgba(248,113,113,0.6)); }
+        .commune-card.maripasoula { background: linear-gradient(135deg, rgba(251,191,36,0.9), rgba(251,191,36,0.6)); }
+        
+        .commune-name {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .commune-count {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-top: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .school-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            padding: 20px 0;
+        }
+        
+        .school-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+            text-align: center;
+        }
+        
+        .school-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255,255,255,0.2);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        
+        .school-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .school-icon {
+            font-size: 36px;
+            margin-bottom: 15px;
+        }
+        
+        .password-modal, .pacte-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .password-modal.active, .pacte-modal.active {
+            display: flex;
+        }
+        
+        .password-content, .pacte-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        
+        .pacte-content {
+            max-width: 500px;
+        }
+        
+        .password-content h3, .pacte-content h3 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #1e293b;
+            font-weight: 700;
+        }
+        
+        .password-content input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            background: white;
+            color: #1e293b;
+            font-size: 16px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .password-content input:focus {
+            outline: none;
+            border-color: #60a5fa;
+        }
+        
+        .password-content button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .password-content button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(96,165,250,0.4);
+        }
+        
+        .password-error {
+            color: #ef4444;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .pacte-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .pacte-btn {
+            padding: 15px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            color: #1e293b;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .pacte-btn:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+            color: white;
+            transform: translateX(5px);
+        }
+        
+        .bubble-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .bubble {
+            background: white;
+            border-radius: 15px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            text-decoration: none;
+            color: #1e293b;
+            display: block;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        
+        .bubble:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255,255,255,0.3);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .bubble-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+        
+        .bubble-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .absence-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 2000;
+            overflow-y: auto;
+        }
+        
+        .absence-modal.active {
+            display: block;
+        }
+        
+        .absence-content {
+            background: white;
+            margin: 30px auto;
+            width: 95%;
+            max-width: 1200px;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        
+        .absence-header {
+            background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%);
+            padding: 25px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .absence-header h2 {
+            font-size: 24px;
+        }
+        
+        .close-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 28px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .close-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: rotate(90deg);
+        }
+        
+        .absence-body {
+            padding: 30px;
+        }
+        
+        .week-input {
+            background: #f1f5f9;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .week-input label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .date-inputs {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .date-inputs input {
+            padding: 10px;
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            background: white;
+            color: #1e293b;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .teachers-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        .teachers-table th {
+            background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%);
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        .teachers-table td {
+            padding: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 14px;
+        }
+        
+        .teachers-table tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+        
+        .teachers-table tr.absent {
+            background: rgba(251,191,36,0.2);
+        }
+        
+        .checkbox-cell {
+            text-align: center;
+        }
+        
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #60a5fa;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            background: white;
+            color: #1e293b;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        input[type="text"]:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .status-T {
+            background: #10b981;
+            color: white;
+        }
+        
+        .status-C {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .absence-footer {
+            padding: 20px 30px;
+            background: #f1f5f9;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            border-top: 2px solid #e2e8f0;
+        }
+        
+        button {
+            padding: 12px 25px;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(96,165,250,0.4);
+        }
+        
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #1e293b;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .btn-secondary:hover {
+            background: #e2e8f0;
+            border-color: #cbd5e1;
+        }
+        
+        .absent-counter {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #ef4444;
+            padding: 15px 25px;
+            border-radius: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            font-weight: 600;
+            z-index: 1999;
+            display: none;
+        }
+        
+        .absent-counter.show {
+            display: block;
+        }
+        
+        .absent-counter .number {
+            font-size: 24px;
+        }
+        
+        @media (max-width: 768px) {
+            .back-button {
+                top: 20px;
+                right: 20px;
+                width: 45px;
+                height: 45px;
+            }
+            
+            .commune-grid, .school-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .bubble-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="back-button" id="back-button" onclick="goBack()">←</button>
+    
+    <div class="container">
+        <div class="header">
+            <h1>Suivi des dossiers</h1>
+            <p>Circonscription du Maroni - Académie de Guyane</p>
+        </div>
+        
+        <div class="breadcrumb" id="breadcrumb">
+            <a onclick="showMainPage()">Accueil</a>
+        </div>
+        
+        <!-- Main Page -->
+        <div id="main-page" class="page active">
+            <div class="commune-grid">
+                <div class="commune-card apatou" onclick="showCommunePage('apatou')">
+                    <div class="commune-name">Apatou</div>
+                    <p>Cliquez pour accéder aux écoles</p>
+                    <div class="commune-count">1 école</div>
+                </div>
+                <div class="commune-card grand-santi" onclick="showCommunePage('grand-santi')">
+                    <div class="commune-name">Grand-Santi</div>
+                    <p>Cliquez pour accéder aux écoles</p>
+                    <div class="commune-count">6 écoles</div>
+                </div>
+                <div class="commune-card papaichton" onclick="showCommunePage('papaichton')">
+                    <div class="commune-name">Papaichton</div>
+                    <p>Cliquez pour accéder aux écoles</p>
+                    <div class="commune-count">3 écoles</div>
+                </div>
+                <div class="commune-card maripasoula" onclick="showCommunePage('maripasoula')">
+                    <div class="commune-name">Maripasoula</div>
+                    <p>Cliquez pour accéder aux écoles</p>
+                    <div class="commune-count">10 écoles</div>
+                </div>
+            </div>
+        </div>
+        
+                <!-- Page Apatou -->
+        <div id="commune-apatou" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Apatou</h2>
+            <div class="school-grid">
+                <div class="school-card" onclick="showSchoolPasswordPrompt('providence', 'Providence')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Providence</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Page Grand-Santi -->
+        <div id="commune-grand-santi" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Grand-Santi</h2>
+            <div class="school-grid">
+                <div class="school-card" onclick="showSchoolPasswordPrompt('fanko', 'Fanko')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Fanko</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('elementaire-castor', 'Élémentaire Elie Castor')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Élémentaire Elie Castor</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('maternelle-castor', 'Maternelle Elie Castor')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Maternelle Elie Castor</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('monfina', 'Monfina')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Monfina</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('apaguy', 'Apaguy')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Apaguy</div>
+                </div>
+                </div>
+        </div>
+        
+        <!-- Page Papaichton -->
+        <div id="commune-papaichton" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Papaichton</h2>
+            <div class="school-grid">
+                <div class="school-card" onclick="showSchoolPasswordPrompt('charles-cazal', 'Charles Cazal')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Charles Cazal</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('loca', 'Loca')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Loca</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('gran-man-tolinga', 'Gran Man Tolinga')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Gran Man Tolinga</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Page Maripasoula -->
+        <div id="commune-maripasoula" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Maripasoula</h2>
+            <div class="school-grid">
+                <div class="school-card" onclick="showSchoolPasswordPrompt('elahe', 'Elahé')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Elahé</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('cayode', 'Cayodé')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Cayodé</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('twenke', 'Twenke-Taluwen')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Twenke-Taluwen</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('antecume-pidima', 'Antecume Pata / Pidima')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Antecume Pata / Pidima</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('alexis-jonas', 'Alexis Jonas')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Alexis Jonas</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('robert-vignon', 'Robert Vignon')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Robert Vignon</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('tobie-balla', 'Tobie Balla')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Tobie Balla</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('antoine-abienso', 'Antoine Abienso')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Antoine Abienso</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('duplessis', 'A.Duplessis')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">A.Duplessis</div>
+                </div>
+                <div class="school-card" onclick="showSchoolPasswordPrompt('nwacapou', 'Nouveau Wacapou')">
+                    <div class="school-icon">🏫</div>
+                    <div class="school-name">Nouveau Wacapou</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Page Providence -->
+        <div id="school-providence" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Providence</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/providence-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('providence')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/providence-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('providence', 'Providence')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                    <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Fanko -->
+        <div id="school-fanko" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Fanko</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/fanko-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('fanko')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/fanko-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('fanko', 'Fanko')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Élémentaire Elie Castor -->
+        <div id="school-elementaire-castor" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Élémentaire Elie Castor</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/elementaire-castor-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('elementaire-castor')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/castor-elem-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('elementaire-castor', 'Élémentaire Elie Castor')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Maternelle Elie Castor -->
+        <div id="school-maternelle-castor" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Maternelle Elie Castor</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/maternelle-castor-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('maternelle-castor')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/maternelle-castor-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('maternelle-castor', 'Maternelle Elie Castor')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Monfina -->
+        <div id="school-monfina" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Monfina</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/mofina-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('monfina')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/mofina-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('monfina', 'Monfina')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Apaguy -->
+        <div id="school-apaguy" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Apaguy</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/apaguy-aiad" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('apaguy')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/apaguy-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('apaguy', 'Apaguy')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Charles Cazal -->
+        <div id="school-charles-cazal" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Charles Cazal</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/charles-cazal-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('charles-cazal')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/cazal-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('charles-cazal', 'Charles Cazal')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Loca -->
+        <div id="school-loca" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Loca</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/loca-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('loca')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/loca-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('loca', 'Loca')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Gran Man Tolinga -->
+        <div id="school-gran-man-tolinga" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Gran Man Tolinga</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/gran-man-tolinga-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('gran-man-tolinga')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/grand-man-tolinga-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('gran-man-tolinga', 'Gran Man Tolinga')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Elahé -->
+        <div id="school-elahe" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Elahé</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/elahe-aiaf" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('elahe')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/elahe-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('elahe', 'Elahé')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Cayodé -->
+        <div id="school-cayode" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Cayodé</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/cayode-aiaf" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('cayode')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/cayode-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('cayode', 'Cayodé')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Twenke-Taluwen -->
+        <div id="school-twenke" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Twenke-Taluwen</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/taluen-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('twenke')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/taluen-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('twenke', 'Twenke-Taluwen')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Antecume Pata / Pidima -->
+        <div id="school-antecume-pidima" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Antecume Pata / Pidima</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/antecum-pata-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('antecume-pidima')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/antecum-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('antecume-pidima', 'Antecume Pata / Pidima')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Alexis Jonas -->
+        <div id="school-alexis-jonas" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Alexis Jonas</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/alexis-jonas-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('alexis-jonas')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/alexis-jonas-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('alexis-jonas', 'Alexis Jonas')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Robert Vignon -->
+        <div id="school-robert-vignon" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Robert Vignon</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/robert-vignon-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('robert-vignon')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/robert-vignon-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('robert-vignon', 'Robert Vignon')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Tobie Balla -->
+        <div id="school-tobie-balla" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Tobie Balla</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/tobie-balla-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('tobie-balla')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/tobie-balla-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('tobie-balla', 'Tobie Balla')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Antoine Abienso -->
+        <div id="school-antoine-abienso" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Antoine Abienso</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/abienso-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('antoine-abienso')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/abienso-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('antoine-abienso', 'Antoine Abienso')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page A.Duplessis -->
+        <div id="school-duplessis" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">A.Duplessis</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/duplessis-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('duplessis')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/duplessis-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('duplessis', 'A.Duplessis')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Page Nouveau Wacapou -->
+        <div id="school-nwacapou" class="page">
+            <h2 style="margin-bottom: 30px; font-size: 32px;">Nouveau Wacapou</h2>
+            <div class="bubble-grid">
+                <a href="https://lite.framacalc.org/new-wacapou-aiae" target="_blank" class="bubble">
+                    <div class="bubble-icon">📊</div>
+                    <div class="bubble-title">Suivi contractuels</div>
+                </a>
+                <div class="bubble" onclick="openPacteModal('nwacapou')">
+                    <div class="bubble-icon">📋</div>
+                    <div class="bubble-title">Pacte</div>
+                </div>
+                <a href="https://lite.framacalc.org/wacapou-aiht" target="_blank" class="bubble">
+                    <div class="bubble-icon">👥</div>
+                    <div class="bubble-title">Liste des enseignants</div>
+                </a>
+                <a href="https://lite.framacalc.org/eps-aiiz" target="_blank" class="bubble">
+                    <div class="bubble-icon">⚽</div>
+                    <div class="bubble-title">Manifestations sportives</div>
+                </a>
+                <div class="bubble" onclick="openAbsenceModal('nwacapou', 'Nouveau Wacapou')">
+                    <div class="bubble-icon">📅</div>
+                    <div class="bubble-title">Suivi des absences</div>
+                </div>
+                                <a href="https://nuage02.apps.education.fr/index.php/s/2kRR6qKkgJmLwX8" target="_blank" class="bubble">
+                    <div class="bubble-icon">📤</div>
+                    <div class="bubble-title">Dépôt retour absences</div>
+                </a>
+                <a href="assistant-sorties-scolaires.html" target="_blank" class="bubble">
+                    <div class="bubble-icon">🚌</div>
+                    <div class="bubble-title">Aide aux sorties</div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Password Modal -->
+        <div id="password-modal" class="password-modal">
+            <div class="password-content">
+                <h3 id="password-school-name">École</h3>
+                <input type="password" id="password-input" placeholder="Mot de passe">
+                <button onclick="validatePassword()">Valider</button>
+                <div class="password-error" id="password-error">Mot de passe incorrect</div>
+            </div>
+        </div>
+        
+        <!-- Pacte Modal -->
+        <div id="pacte-modal" class="pacte-modal">
+            <div class="pacte-content">
+                <h3 id="pacte-title">Pacte - Choisissez une action</h3>
+                <div class="pacte-buttons">
+                    <button class="pacte-btn" onclick="openPacteLink('suivi')">
+                        📋 Suivi du pacte
+                    </button>
+                    <button class="pacte-btn" onclick="openPacteLink('formulaire')">
+                        📝 Télécharger le formulaire
+                    </button>
+                    <button class="pacte-btn" onclick="openPacteLink('depot')">
+                        📤 Déposer les retours pacte
+                    </button>
+                </div>
+                <button class="btn-secondary" onclick="closePacteModal()" style="margin-top: 20px; width: 100%;">Fermer</button>
+            </div>
+        </div>
+        
+        <!-- Absence Modal -->
+        <div id="absence-modal" class="absence-modal">
+            <div class="absence-content">
+                <div class="absence-header">
+                    <h2 id="absence-school-name">École - Suivi des absences</h2>
+                    <button class="close-btn" onclick="closeAbsenceModal()">&times;</button>
+                </div>
+                <div class="absence-body">
+                    <div class="week-input">
+                        <label>📅 Semaine concernée :</label>
+                        <div class="date-inputs">
+                            <span>Du</span>
+                            <input type="date" id="absence-date-debut">
+                            <span>au</span>
+                            <input type="date" id="absence-date-fin">
+                        </div>
+                    </div>
+                    
+                    <table class="teachers-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">Absent</th>
+                                <th>Nom</th>
+                                <th>Prénom</th>
+                                <th>Niveau</th>
+                                <th style="width: 80px;">Statut</th>
+                                <th style="width: 180px;">Date(s) d'absence</th>
+                                <th style="width: 150px;">Justif. transmis au directeur</th>
+                                <th style="width: 150px;">Justif. transmis à la circo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="absence-teachers-body">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="absence-footer">
+                    <button class="btn-secondary" onclick="resetAbsenceForm()">🔄 Réinitialiser</button>
+                    <button class="btn-primary" onclick="generateExcel()">📊 Générer le fichier Excel</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="absent-counter" id="absent-counter">
+            <span class="number" id="absent-count">0</span> absent(s)
+        </div>
+    </div>
+    
+    <script>
+        const schoolsConfigRaw = {
+        "Apatou": {
+                "color": "#60A5FA",
+                "schools": {
+                        "providence": {
+                                "name": "Providence",
+                                "password": "providence2024",
+                                "tracking": "https://lite.framacalc.org/providence-aiae",
+                                "pacte": "https://lite.framacalc.org/providence-aid6",
+                                "liste": "documents/providence-enseignants.pdf"
+                        }
+                }
+        },
+        "Grand-Santi": {
+                "color": "#34D399",
+                "schools": {
+                        "fanko": {
+                                "name": "Fanko",
+                                "password": "fanko2024",
+                                "tracking": "https://lite.framacalc.org/fanko-aiae",
+                                "pacte": "https://lite.framacalc.org/fanko-aiee",
+                                "liste": "documents/fanko-enseignants.pdf"
+                        },
+                        "elementaire-castor": {
+                                "name": "Élémentaire Elie Castor",
+                                "password": "elemcastor2024",
+                                "tracking": "https://lite.framacalc.org/elementaire-castor-aiae",
+                                "pacte": "https://lite.framacalc.org/elie-castor-aied",
+                                "liste": "documents/elementaire-castor-enseignants.pdf"
+                        },
+                        "maternelle-castor": {
+                                "name": "Maternelle Elie Castor",
+                                "password": "castor2024",
+                                "tracking": "https://lite.framacalc.org/maternelle-castor-aiae",
+                                "pacte": "https://lite.framacalc.org/maternelle-castor-aiee",
+                                "liste": "documents/maternelle-castor-enseignants.pdf"
+                        },
+                        "monfina": {
+                                "name": "Monfina",
+                                "password": "mofina2024",
+                                "tracking": "https://lite.framacalc.org/mofina-aiae",
+                                "pacte": "https://lite.framacalc.org/mofina-aiee",
+                                "liste": "documents/monfina-enseignants.pdf"
+                        },
+                        "apaguy": {
+                                "name": "Apaguy",
+                                "password": "apaguy2024",
+                                "tracking": "https://lite.framacalc.org/apaguy-aiad",
+                                "pacte": "https://lite.framacalc.org/apaguy-aied",
+                                "liste": "documents/apaguy-enseignants.pdf"
+                        },
+                        "empu": {
+                                "name": "EMPU Elie CASTOR",
+                                "password": "empu2024",
+                                "tracking": "https://lite.framacalc.org/empu-aiae",
+                                "pacte": "https://lite.framacalc.org/empu-aiee",
+                                "liste": "documents/empu-enseignants.pdf"
+                        }
+                }
+        },
+        "Papaichton": {
+                "color": "#F87171",
+                "schools": {
+                        "charles-cazal": {
+                                "name": "Charles Cazal",
+                                "password": "cazal2024",
+                                "tracking": "https://lite.framacalc.org/charles-cazal-aiae",
+                                "pacte": "https://lite.framacalc.org/charles-cazal-aiee",
+                                "liste": "documents/charles-cazal-enseignants.pdf"
+                        },
+                        "loca": {
+                                "name": "Loca",
+                                "password": "loca2024",
+                                "tracking": "https://lite.framacalc.org/loca-aiae",
+                                "pacte": "https://lite.framacalc.org/loca-aiee",
+                                "liste": "documents/loca-enseignants.pdf"
+                        },
+                        "gran-man-tolinga": {
+                                "name": "Gran Man Tolinga",
+                                "password": "tolinga2024",
+                                "tracking": "https://lite.framacalc.org/gran-man-tolinga-aiae",
+                                "pacte": "https://lite.framacalc.org/gran-man-tolinga-aiee",
+                                "liste": "documents/gran-man-tolinga-enseignants.pdf"
+                        }
+                }
+        },
+        "Maripasoula": {
+                "color": "#FBBF24",
+                "schools": {
+                        "elahe": {
+                                "name": "Elahé",
+                                "password": "elahe2024",
+                                "tracking": "https://lite.framacalc.org/elahe-aiaf",
+                                "pacte": "https://lite.framacalc.org/elahe-aiee",
+                                "liste": "documents/elahe-enseignants.pdf"
+                        },
+                        "cayode": {
+                                "name": "Cayodé",
+                                "password": "cayode2024",
+                                "tracking": "https://lite.framacalc.org/cayode-aiaf",
+                                "pacte": "https://lite.framacalc.org/cayode-aiee",
+                                "liste": "documents/cayode-enseignants.pdf"
+                        },
+                        "twenke": {
+                                "name": "Twenke-Taluwen",
+                                "password": "taluen2024",
+                                "tracking": "https://lite.framacalc.org/taluen-aiae",
+                                "pacte": "https://lite.framacalc.org/taluen-aiee",
+                                "liste": "documents/twenke-enseignants.pdf"
+                        },
+                        "antecume-pidima": {
+                                "name": "Antecume Pata / Pidima",
+                                "password": "pidima2024",
+                                "tracking": "https://lite.framacalc.org/antecum-pata-aiae",
+                                "pacte": "https://lite.framacalc.org/antecum-pata-aiee",
+                                "liste": "documents/antecume-enseignants.pdf"
+                        },
+                        "alexis-jonas": {
+                                "name": "Alexis Jonas",
+                                "password": "jonas2024",
+                                "tracking": "https://lite.framacalc.org/alexis-jonas-aiae",
+                                "pacte": "https://lite.framacalc.org/jonas-aiee",
+                                "liste": "documents/alexis-jonas-enseignants.pdf"
+                        },
+                        "robert-vignon": {
+                                "name": "Robert Vignon",
+                                "password": "vignon2024",
+                                "tracking": "https://lite.framacalc.org/robert-vignon-aiae",
+                                "pacte": "https://lite.framacalc.org/vignon-aiee",
+                                "liste": "documents/robert-vignon-enseignants.pdf"
+                        },
+                        "tobie-balla": {
+                                "name": "Tobie Balla",
+                                "password": "balla2024",
+                                "tracking": "https://lite.framacalc.org/tobie-balla-aiae",
+                                "pacte": "https://lite.framacalc.org/tobie-balla-aiee",
+                                "liste": "documents/tobie-balla-enseignants.pdf"
+                        },
+                        "antoine-abienso": {
+                                "name": "Antoine Abienso",
+                                "password": "abienso2024",
+                                "tracking": "https://lite.framacalc.org/abienso-aiae",
+                                "pacte": "https://lite.framacalc.org/abienso-aiee",
+                                "liste": "documents/antoine-abienso-enseignants.pdf"
+                        },
+                        "duplessis": {
+                                "name": "A.Duplessis",
+                                "password": "duplessis2024",
+                                "tracking": "https://lite.framacalc.org/duplessis-aiae",
+                                "pacte": "https://lite.framacalc.org/duplessis-aiee",
+                                "liste": "documents/duplessis-enseignants.pdf"
+                        },
+                        "nwacapou": {
+                                "name": "Nouveau Wacapou",
+                                "password": "wacapou2024",
+                                "tracking": "https://lite.framacalc.org/new-wacapou-aiae",
+                                "pacte": "https://lite.framacalc.org/new-wacapou-aiee",
+                                "liste": "documents/nwacapou-enseignants.pdf"
+                        }
+                }
+        }
+};
+        
+        const schoolsConfig = {};
+        for (const commune in schoolsConfigRaw) {
+            const communeData = schoolsConfigRaw[commune];
+            if (communeData.schools) {
+                for (const schoolId in communeData.schools) {
+                    schoolsConfig[schoolId] = {
+                        ...communeData.schools[schoolId],
+                        commune: commune
+                    };
+                }
+            }
+        }
+        
+        const teachersData = {
+        "duplessis": {
+                "name": "A.Duplessis",
+                "teachers": [
+                        {
+                                "nom": "CHARABIE",
+                                "prenom": "Severine",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "MONPIERRE",
+                                "prenom": "Siloé",
+                                "niveau": "MS",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "NGWETE",
+                                "prenom": "Els Cheryl",
+                                "niveau": "GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "LOUIS JEAN",
+                                "prenom": "Nephtalie",
+                                "niveau": "GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "PAUL",
+                                "prenom": "Kétia",
+                                "niveau": "GS",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "PEULIA",
+                                "prenom": "Juvenilla",
+                                "niveau": "GS",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "FOSSE",
+                                "prenom": "Derty",
+                                "niveau": "GS",
+                                "statut": "T"
+                        }
+                ]
+        },
+        "alexis-jonas": {
+                "name": "Alexis Jonas",
+                "teachers": [
+                        {
+                                "nom": "BEAUSOLEIL",
+                                "prenom": "Paul",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "APAYACA",
+                                "prenom": "Simone",
+                                "niveau": "CP",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "DIJON",
+                                "prenom": "Leslie",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ANELLI",
+                                "prenom": "Muguette",
+                                "niveau": "CP",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "ROSELET",
+                                "prenom": "Emmanuel",
+                                "niveau": "CP",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "ANTINON",
+                                "prenom": "Evrisca",
+                                "niveau": "CE1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "VA-TOUA",
+                                "prenom": "Noutsia",
+                                "niveau": "CE1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "DINKOOI",
+                                "prenom": "Violette",
+                                "niveau": "CE1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "FATI-RICHENEL",
+                                "prenom": "Gisèle",
+                                "niveau": "CE1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "JACOBS",
+                                "prenom": "Samantha",
+                                "niveau": "CE2",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "MICARDY",
+                                "prenom": "Antoine",
+                                "niveau": "CE2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "DOSOU",
+                                "prenom": "Marie-Lyse",
+                                "niveau": "CE2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ANESCA",
+                                "prenom": "Jean-Carlos",
+                                "niveau": "CE2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "BALLA",
+                                "prenom": "Gerthy",
+                                "niveau": "CM1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "TOUSSAINT",
+                                "prenom": "Guerlande",
+                                "niveau": "CM1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ASSANSSON",
+                                "prenom": "Chérylène",
+                                "niveau": "CM2",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "NETTOYER",
+                                "prenom": "Afouet",
+                                "niveau": "CM2",
+                                "statut": "C"
+                        }
+                ]
+        },
+        "antecume-pidima": {
+                "name": "Antecume Pata / Pidima",
+                "teachers": [
+                        {
+                                "nom": "DE BRETAGNE",
+                                "prenom": "Anne-Dominique",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "KULIYAMAN",
+                                "prenom": "Yailupin",
+                                "niveau": "PS/MS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "GRIS",
+                                "prenom": "Monique",
+                                "niveau": "GS/CP",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "PEES",
+                                "prenom": "Sarah",
+                                "niveau": "CE1/CE2",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "MALEIKE",
+                                "prenom": "Alapai",
+                                "niveau": "CM1/CM2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "RIGAULT",
+                                "prenom": "Nathalie",
+                                "niveau": "PS/MS/GS/CP",
+                                "statut": "C"
+                        }
+                ]
+        },
+        "antoine-abienso": {
+                "name": "Antoine Abienso",
+                "teachers": [
+                        {
+                                "nom": "LINGUET",
+                                "prenom": "Valérie",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "JEAN-BAPTISTE",
+                                "prenom": "Laurelai",
+                                "niveau": "PS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "JACOBS",
+                                "prenom": "Tédy",
+                                "niveau": "PS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "DOUDOU",
+                                "prenom": "Marie-France",
+                                "niveau": "PS",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "PISSI",
+                                "prenom": "Sarah",
+                                "niveau": "PS/MS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "MANGUIMAN",
+                                "prenom": "Achinnie",
+                                "niveau": "MS",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "PINTHIEVE",
+                                "prenom": "Naomi",
+                                "niveau": "MS",
+                                "statut": "T"
+                        }
+                ]
+        },
+        "apaguy": {
+                "name": "Apaguy",
+                "teachers": [
+                        {
+                                "nom": "BRISSEAU",
+                                "prenom": "Daphney",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "CLERFILS LOUIS",
+                                "prenom": "Yoleine",
+                                "niveau": "PS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "NOEL JEUNE",
+                                "prenom": "Rodelie",
+                                "niveau": "MS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "LOUIS",
+                                "prenom": "David",
+                                "niveau": "GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "RAMTIRAT",
+                                "prenom": "Chandini",
+                                "niveau": "CP",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "LUSBEC",
+                                "prenom": "Barbara",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "JOSEPH",
+                                "prenom": "Rosemanie",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "METELUS",
+                                "prenom": "Brunette",
+                                "niveau": "CE1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "LUBIN",
+                                "prenom": "Pierre-Auguste",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "TUINFORT",
+                                "prenom": "Oglaya",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "JACQUES",
+                                "prenom": "Charlène",
+                                "niveau": "CE2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "DIMPAY",
+                                "prenom": "Mauriciano",
+                                "niveau": "CE2/CM1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "BEAUGE",
+                                "prenom": "Givenoo",
+                                "niveau": "CM1/CM2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "SAMPAIN",
+                                "prenom": "Laurents",
+                                "niveau": "CM2",
+                                "statut": "C"
+                        }
+                ]
+        },
+        "cayode": {
+                "name": "Cayodé",
+                "teachers": [
+                        {
+                                "nom": "ORELUS",
+                                "prenom": "Wilberna",
+                                "niveau": "DIR",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ALOUPKI",
+                                "prenom": "Poletti",
+                                "niveau": "PS/MS/GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "PAUL",
+                                "prenom": "Gesner",
+                                "niveau": "CP/ CE1/ CE2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ORELUS",
+                                "prenom": "Wilberna",
+                                "niveau": "CM1/CM2",
+                                "statut": "C"
+                        }
+                ]
+        },
+        "charles-cazal": {
+                "name": "Charles Cazal",
+                "teachers": [
+                        {
+                                "nom": "ADAOUDE",
+                                "prenom": "Olivia",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "FELICHI",
+                                "prenom": "Lynch",
+                                "niveau": "TPS/ PS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "DJANI",
+                                "prenom": "Bruno",
+                                "niveau": "PS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "BAYONNE",
+                                "prenom": "Anaïs",
+                                "niveau": "MS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "YAOUANQ",
+                                "prenom": "Ana",
+                                "niveau": "GS",
+                                "statut": "T"
+                        }
+                ]
+        },
+        "elahe": {
+                "name": "Elahé",
+                "teachers": [
+                        {
+                                "nom": "AZEDE",
+                                "prenom": "Mike",
+                                "niveau": "CE1/CE2/CM1/CM2",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "DOEMA",
+                                "prenom": "Jonathan",
+                                "niveau": "PS/MS/GS/CP",
+                                "statut": "C"
+                        }
+                ]
+        },
+        "fanko": {
+                "name": "Fanko",
+                "teachers": [
+                        {
+                                "nom": "CHARLES",
+                                "prenom": "Carine",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "PROD\'HOMME",
+                                "prenom": "Elodie",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ROTARDIER",
+                                "prenom": "Sandra",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "DOR",
+                                "prenom": "Nadia",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ALCIUS",
+                                "prenom": "Bertina",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "DULBECCO",
+                                "prenom": "Romieu",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "PHILEMON",
+                                "prenom": "Elisabeth",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "METELLUS",
+                                "prenom": "Marthe",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "REGISTRE",
+                                "prenom": "Maccien",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ELMORT",
+                                "prenom": "Yolaine (TR de Cayenne)",
+                                "niveau": "CE1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "LAMBERT",
+                                "prenom": "Wantho",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "SAÜL",
+                                "prenom": "James",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "GUIRAND",
+                                "prenom": "Woodjina",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ROS",
+                                "prenom": "Jean-Baptiste",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "JEROME",
+                                "prenom": "Mackteison",
+                                "niveau": "CE2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "KADER",
+                                "prenom": "Audrey",
+                                "niveau": "CE2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "PIANET",
+                                "prenom": "Maël",
+                                "niveau": "CE2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "CHARLES",
+                                "prenom": "Saintil",
+                                "niveau": "CM1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "BRIGITTE",
+                                "prenom": "Jonathan",
+                                "niveau": "CM1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "VILASSE",
+                                "prenom": "Jennifer",
+                                "niveau": "CM1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "CHIRON",
+                                "prenom": "Claire",
+                                "niveau": "CM2",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "DOIRIN",
+                                "prenom": "Jean-Ritchy",
+                                "niveau": "CM2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "DONOE",
+                                "prenom": "Jason",
+                                "niveau": "CM2",
+                                "statut": "C"
+                        }
+                ]
+        },
+        "gran-man-tolinga": {
+                "name": "Gran Man Tolinga",
+                "teachers": [
+                        {
+                                "nom": "TELON",
+                                "prenom": "Sonrisa Sergina",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "JOSEPH",
+                                "prenom": "Christophe",
+                                "niveau": "CP",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "LOBI",
+                                "prenom": "Laurent",
+                                "niveau": "CP",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "DIFOU",
+                                "prenom": "Charles",
+                                "niveau": "CP",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "PANIER",
+                                "prenom": "Magdala",
+                                "niveau": "CE1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "LOUIS",
+                                "prenom": "Guerling",
+                                "niveau": "CE1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "MICHEL",
+                                "prenom": "Job",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "YOUSSOU",
+                                "prenom": "Vanessa",
+                                "niveau": "CE2",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "DEEL",
+                                "prenom": "Ulerisia",
+                                "niveau": "CE2/CM1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "LOBI",
+                                "prenom": "Bénédicte",
+                                "niveau": "CM1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "MONDOU",
+                                "prenom": "Thomas",
+                                "niveau": "CM2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "BAGADI",
+                                "prenom": "BRITANI",
+                                "niveau": "CM2",
+                                "statut": "C"
+                        }
+                ]
+        },
+        "loca": {
+                "name": "Loca",
+                "teachers": [
+                        {
+                                "nom": "MOMOU",
+                                "prenom": "Amission",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "NOEL",
+                                "prenom": "Alphonse",
+                                "niveau": "TPS/PS/MS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "LOBI",
+                                "prenom": "Gillian",
+                                "niveau": "MS/GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ORNELUS",
+                                "prenom": "Christelle",
+                                "niveau": "CP Loka",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "BECOU",
+                                "prenom": "Claude-Aline",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "BLAKAMAN",
+                                "prenom": "Lauriane",
+                                "niveau": "CE2",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "DIFOU",
+                                "prenom": "Latoya",
+                                "niveau": "CE2/CM1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "AMAIKON",
+                                "prenom": "Conselea",
+                                "niveau": "CM2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "DECLERCQ",
+                                "prenom": "Donovan",
+                                "niveau": "CP Boniville",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "BECOU",
+                                "prenom": "Prosper",
+                                "niveau": "TPS/PS/MS/GS",
+                                "statut": "C"
+                        }
+                ]
+        },
+        "maternelle-castor": {
+                "name": "Maternelle Elie Castor",
+                "teachers": [
+                        {
+                                "nom": "PRAJET",
+                                "prenom": "Elodie",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "JOSEPH",
+                                "prenom": "Yves",
+                                "niveau": "PS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "AUVAL",
+                                "prenom": "Ketlyne",
+                                "niveau": "PS",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "LUBIN",
+                                "prenom": "Hyacinthe",
+                                "niveau": "PS",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "FRENOT",
+                                "prenom": "Najac",
+                                "niveau": "MS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "CAVELOT",
+                                "prenom": "Guillaume",
+                                "niveau": "MS",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "KOESE",
+                                "prenom": "Severine",
+                                "niveau": "MS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "CONSOLE",
+                                "prenom": "Vercius",
+                                "niveau": "MS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "MAURIS",
+                                "prenom": "Morgane",
+                                "niveau": "MS/GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "PODENCY",
+                                "prenom": "Sergine",
+                                "niveau": "GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "JOASSAINT",
+                                "prenom": "Jean-Carmel",
+                                "niveau": "GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "PODENCY",
+                                "prenom": "Cécile",
+                                "niveau": "GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "SUPRICE",
+                                "prenom": "Hélène",
+                                "niveau": "GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ABOIKONI",
+                                "prenom": "Mariella",
+                                "niveau": "PS/MS/GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "HENRY",
+                                "prenom": "Kenson",
+                                "niveau": "PS/MS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "SELENCIEUX",
+                                "prenom": "Marie-Michelle",
+                                "niveau": "MS/GS",
+                                "statut": "C"
+                        }
+                ]
+        },
+        "monfina": {
+                "name": "Monfina",
+                "teachers": [
+                        {
+                                "nom": "LAGRAND",
+                                "prenom": "Marie-Claire",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "DORVIL",
+                                "prenom": "Marie Lisemene",
+                                "niveau": "PS/MS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ULYSSE",
+                                "prenom": "Dorothie",
+                                "niveau": "MS/GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "CHERILUS",
+                                "prenom": "Michelson",
+                                "niveau": "GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "DORVIL",
+                                "prenom": "Wildine",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "AURELIEN",
+                                "prenom": "Emmanuel",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "KOESSLER",
+                                "prenom": "Pascale",
+                                "niveau": "CE1",
+                                "statut": "TR"
+                        },
+                        {
+                                "nom": "ILLACE",
+                                "prenom": "Chandly",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "AKOMMEDI",
+                                "prenom": "Rafaël",
+                                "niveau": "CE2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "LEGER",
+                                "prenom": "Frideline",
+                                "niveau": "CM1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "CHARLES",
+                                "prenom": "Guy-Alexandre",
+                                "niveau": "CM2",
+                                "statut": "C"
+                        }
+                ]
+        },
+        "nwacapou": {
+                "name": "N.Wacapou",
+                "teachers": [
+                        {
+                                "nom": "CAZAL",
+                                "prenom": "Marie-Prisca",
+                                "niveau": "CE1/CE2/CM1/CM2",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "CAZAL",
+                                "prenom": "Marie-Prisca",
+                                "niveau": "PS/MS/GS/CP",
+                                "statut": "T"
+                        }
+                ]
+        },
+        "providence": {
+                "name": "Providence",
+                "teachers": [
+                        {
+                                "nom": "ASJEME",
+                                "prenom": "Jordy",
+                                "niveau": "DIR",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "BENTA",
+                                "prenom": "Sarafina",
+                                "niveau": "PS/MS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ITIEMAN",
+                                "prenom": "Pascal",
+                                "niveau": "GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ABENTE",
+                                "prenom": "Janice",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "PAUL",
+                                "prenom": "Louis Amstrong",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "JOSEPH",
+                                "prenom": "Evens",
+                                "niveau": "CE2/CM1",
+                                "statut": "C"
+                        }
+                ]
+        },
+        "robert-vignon": {
+                "name": "Robert Vignon",
+                "teachers": [
+                        {
+                                "nom": "BRUNO",
+                                "prenom": "Veronica",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "BRANCHE",
+                                "prenom": "Marie-Claire",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "BIRON",
+                                "prenom": "Marie-Brigitte",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "PEULIA",
+                                "prenom": "François",
+                                "niveau": "CP",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "DE SANTI",
+                                "prenom": "Caroline",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "AGELAS",
+                                "prenom": "Marie-Claude",
+                                "niveau": "CE1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "BIRON",
+                                "prenom": "Gestina",
+                                "niveau": "CE1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "LERY PETITO",
+                                "prenom": "Sandra",
+                                "niveau": "CE1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "BOUSSOUSSA",
+                                "prenom": "Claire",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "JEAN-FRANCOIS",
+                                "prenom": "Lorence",
+                                "niveau": "CE2",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "BIRON",
+                                "prenom": "Zabida",
+                                "niveau": "CE2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "PENON",
+                                "prenom": "Cerol",
+                                "niveau": "CE2/CM1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "LOBI",
+                                "prenom": "Hilary",
+                                "niveau": "CM1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "TADJIDINE",
+                                "prenom": "Ibrahime Ben",
+                                "niveau": "CM2",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "ABLANC",
+                                "prenom": "Scereine",
+                                "niveau": "CM2",
+                                "statut": "C"
+                        }
+                ]
+        },
+        "tobie-balla": {
+                "name": "Tobie Balla",
+                "teachers": [
+                        {
+                                "nom": "BADUEL",
+                                "prenom": "Danielle",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "DEKON",
+                                "prenom": "Drusyla",
+                                "niveau": "PS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ANANAS",
+                                "prenom": "Ogynda",
+                                "niveau": "MS",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "KANIA",
+                                "prenom": "Naïssa",
+                                "niveau": "GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "LAGUERRE",
+                                "prenom": "Jamesly",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "CLERVEAU",
+                                "prenom": "Fanfan",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ARTHUR",
+                                "prenom": "Elianise",
+                                "niveau": "CE1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "ABIENSO",
+                                "prenom": "Feneli",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "YAO",
+                                "prenom": "N-guessan-Aimee",
+                                "niveau": "CE2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "AGOUDOUMAN",
+                                "prenom": "Christophe",
+                                "niveau": "CM1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "RIVIER",
+                                "prenom": "Noémie",
+                                "niveau": "CM1",
+                                "statut": "PES 100%"
+                        },
+                        {
+                                "nom": "MOLINIER",
+                                "prenom": "Christelle",
+                                "niveau": "CM2",
+                                "statut": "T"
+                        }
+                ]
+        },
+        "twenke": {
+                "name": "Twenke-Taluwen",
+                "teachers": [
+                        {
+                                "nom": "DUPLOYÉ",
+                                "prenom": "Alexis",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "OPOYA",
+                                "prenom": "Sylvana",
+                                "niveau": "PS/MS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "KOENERSIE",
+                                "prenom": "Demy",
+                                "niveau": "MS/GS",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "ESTEBAN",
+                                "prenom": "Joan",
+                                "niveau": "CP",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "NTUMBA",
+                                "prenom": "Kumayingi",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "CADIGNAN",
+                                "prenom": "Xenio",
+                                "niveau": "CE2/CM1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "GANACHAUD",
+                                "prenom": "Estelle",
+                                "niveau": "CM1/CM2",
+                                "statut": "T"
+                        }
+                ]
+        },
+        "elementaire-castor": {
+                "name": "Élémentaire Elie Castor",
+                "teachers": [
+                        {
+                                "nom": "THOMIS",
+                                "prenom": "Olivier",
+                                "niveau": "DIR",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "PASCAL",
+                                "prenom": "Juliette",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "MALACARNET",
+                                "prenom": "Anaïs",
+                                "niveau": "CP",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "BALTYDE",
+                                "prenom": "Océane",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "DELON",
+                                "prenom": "Jose - Thaïna",
+                                "niveau": "CP",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "BRUNO",
+                                "prenom": "Missach",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "SINTIE",
+                                "prenom": "Nadine",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "JEAN PIERROT",
+                                "prenom": "Emile",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "DORVIL",
+                                "prenom": "Gilbert",
+                                "niveau": "CE1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "GEDDEMAN",
+                                "prenom": "Rebecca",
+                                "niveau": "CE2",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "OXYBEL",
+                                "prenom": "Lauria",
+                                "niveau": "CE2",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "DEFREL",
+                                "prenom": "Kessy",
+                                "niveau": "CM1",
+                                "statut": "T"
+                        },
+                        {
+                                "nom": "BIEN AIME",
+                                "prenom": "Watson",
+                                "niveau": "CM1",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "PASCAL",
+                                "prenom": "Jovrendy",
+                                "niveau": "CM2",
+                                "statut": "C"
+                        },
+                        {
+                                "nom": "FLEURIMA",
+                                "prenom": "Geff",
+                                "niveau": "CM2",
+                                "statut": "C"
+                        }
+                ]
+        }
+};
+        
+        const masterPassword = 'maripasoula';
+        let currentSchoolId = null;
+        let currentCommuneId = null;
+        let currentPacteSchoolId = null;
+        let navigationHistory = [];
+        
+        function updateBackButton() {
+            const backButton = document.getElementById('back-button');
+            if (navigationHistory.length > 0) {
+                backButton.classList.add('show');
+            } else {
+                backButton.classList.remove('show');
+            }
+        }
+        
+        function goBack() {
+            if (navigationHistory.length > 0) {
+                const lastState = navigationHistory.pop();
+                if (lastState.type === 'main') {
+                    showMainPage(true);
+                } else if (lastState.type === 'commune') {
+                    showCommunePage(lastState.id, true);
+                }
+            }
+        }
+        
+        function showMainPage(fromBack = false) {
+            if (!fromBack) {
+                navigationHistory = [];
+            }
+            
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('main-page').classList.add('active');
+            updateBreadcrumb([]);
+            updateBackButton();
+        }
+        
+        function showCommunePage(communeId, fromBack = false) {
+            if (!fromBack) {
+                navigationHistory.push({ type: 'main' });
+            }
+            
+            currentCommuneId = communeId;
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`commune-${communeId}`).classList.add('active');
+            
+            const communeName = {
+                'apatou': 'Apatou',
+                'grand-santi': 'Grand-Santi',
+                'papaichton': 'Papaichton',
+                'maripasoula': 'Maripasoula'
+            }[communeId];
+            
+            updateBreadcrumb([{ name: communeName, action: null }]);
+            updateBackButton();
+        }
+        
+        function showSchoolPasswordPrompt(schoolId, schoolName) {
+            currentSchoolId = schoolId;
+            document.getElementById('password-school-name').textContent = schoolName;
+            document.getElementById('password-input').value = '';
+            document.getElementById('password-error').style.display = 'none';
+            document.getElementById('password-modal').classList.add('active');
+        }
+        
+        function validatePassword() {
+            const input = document.getElementById('password-input').value;
+            const schoolPassword = schoolsConfig[currentSchoolId]?.password || '';
+            
+            if (input === schoolPassword || input === masterPassword) {
+                document.getElementById('password-modal').classList.remove('active');
+                showSchoolPage(currentSchoolId);
+            } else {
+                document.getElementById('password-error').style.display = 'block';
+            }
+        }
+        
+        function showSchoolPage(schoolId) {
+            navigationHistory.push({ type: 'commune', id: currentCommuneId });
+            
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`school-${schoolId}`).classList.add('active');
+            
+            const schoolName = schoolsConfig[schoolId]?.name || '';
+            const communeName = {
+                'apatou': 'Apatou',
+                'grand-santi': 'Grand-Santi',
+                'papaichton': 'Papaichton',
+                'maripasoula': 'Maripasoula'
+            }[currentCommuneId];
+            
+            updateBreadcrumb([
+                { name: communeName, action: `showCommunePage('${currentCommuneId}')` },
+                { name: schoolName, action: null }
+            ]);
+            updateBackButton();
+        }
+        
+        function updateBreadcrumb(items) {
+            const breadcrumb = document.getElementById('breadcrumb');
+            let html = '<a onclick="showMainPage()">Accueil</a>';
+            
+            items.forEach((item, index) => {
+                html += ' <span>›</span> ';
+                if (item.action) {
+                    html += `<a onclick="${item.action}">${item.name}</a>`;
+                } else {
+                    html += `<span style="color: white;">${item.name}</span>`;
+                }
+            });
+            
+            breadcrumb.innerHTML = html;
+        }
+        
+        function openPacteModal(schoolId) {
+            currentPacteSchoolId = schoolId;
+            document.getElementById('pacte-modal').classList.add('active');
+        }
+        
+        function closePacteModal() {
+            document.getElementById('pacte-modal').classList.remove('active');
+        }
+        
+        function openPacteLink(type) {
+            const schoolData = schoolsConfig[currentPacteSchoolId];
+            if (!schoolData) return;
+            
+            let url = '';
+            if (type === 'suivi') {
+                url = schoolData.pacte;
+            } else if (type === 'formulaire') {
+                url = 'https://nuage02.apps.education.fr/index.php/s/PgEPMKCgj9Nk9HX';
+            } else if (type === 'depot') {
+                url = 'https://nuage02.apps.education.fr/index.php/s/z4KszedMqPajxwF';
+            }
+            
+            if (url) {
+                window.open(url, '_blank');
+            }
+            closePacteModal();
+        }
+        
+        function openAbsenceModal(schoolId, schoolName) {
+            if (!teachersData[schoolId]) {
+                alert('⚠️ Pas de données d\'enseignants disponibles pour cette école.');
+                return;
+            }
+            
+            currentSchoolId = schoolId;
+            document.getElementById('absence-school-name').textContent = `École ${schoolName} - Suivi des absences`;
+            document.getElementById('absence-date-debut').value = '';
+            document.getElementById('absence-date-fin').value = '';
+            
+            const tbody = document.getElementById('absence-teachers-body');
+            tbody.innerHTML = '';
+            
+            const teachers = teachersData[schoolId].teachers;
+            teachers.forEach((teacher, index) => {
+                const row = document.createElement('tr');
+                row.dataset.index = index;
+                row.innerHTML = `
+                    <td class="checkbox-cell">
+                        <input type="checkbox" class="absent-check" onchange="toggleAbsence(this)">
+                    </td>
+                    <td>${teacher.nom}</td>
+                    <td>${teacher.prenom}</td>
+                    <td>${teacher.niveau}</td>
+                    <td><span class="status-badge status-${teacher.statut}">${teacher.statut}</span></td>
+                    <td><input type="text" class="dates-absence" placeholder="Ex: 16/12, 17/12" disabled></td>
+                    <td class="checkbox-cell"><input type="checkbox" class="doc-directeur" disabled></td>
+                    <td class="checkbox-cell"><input type="checkbox" class="doc-circo" disabled></td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            document.getElementById('absence-modal').classList.add('active');
+            updateAbsentCounter();
+        }
+        
+        function closeAbsenceModal() {
+            document.getElementById('absence-modal').classList.remove('active');
+            resetAbsenceForm();
+        }
+        
+        function toggleAbsence(checkbox) {
+            const row = checkbox.closest('tr');
+            const inputs = row.querySelectorAll('.dates-absence, .doc-directeur, .doc-circo');
+            
+            if (checkbox.checked) {
+                row.classList.add('absent');
+                inputs.forEach(input => input.disabled = false);
+            } else {
+                row.classList.remove('absent');
+                inputs.forEach(input => {
+                    input.disabled = true;
+                    if (input.type === 'checkbox') {
+                        input.checked = false;
+                    } else {
+                        input.value = '';
+                    }
+                });
+            }
+            
+            updateAbsentCounter();
+        }
+        
+        function updateAbsentCounter() {
+            const count = document.querySelectorAll('.absent-check:checked').length;
+            const counter = document.getElementById('absent-counter');
+            const countElement = document.getElementById('absent-count');
+            
+            countElement.textContent = count;
+            if (count > 0) {
+                counter.classList.add('show');
+            } else {
+                counter.classList.remove('show');
+            }
+        }
+        
+        function resetAbsenceForm() {
+            document.getElementById('absence-date-debut').value = '';
+            document.getElementById('absence-date-fin').value = '';
+            
+            document.querySelectorAll('.absent-check').forEach(cb => {
+                cb.checked = false;
+                toggleAbsence(cb);
+            });
+            
+            updateAbsentCounter();
+        }
+        
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const [year, month, day] = dateStr.split('-');
+            return `${day}/${month}/${year}`;
+        }
+        
+        function generateExcel() {
+            const dateDebut = document.getElementById('absence-date-debut').value;
+            const dateFin = document.getElementById('absence-date-fin').value;
+            
+            if (!dateDebut || !dateFin) {
+                alert('⚠️ Veuillez renseigner les dates de la semaine !');
+                return;
+            }
+            
+            const absentRows = document.querySelectorAll('.absent-check:checked');
+            
+            if (absentRows.length === 0) {
+                alert('⚠️ Aucun enseignant absent sélectionné !');
+                return;
+            }
+            
+            const schoolName = teachersData[currentSchoolId].name;
+            const data = [];
+            
+            data.push(['CIRCONSCRIPTION DU MARONI - SUIVI HEBDOMADAIRE DES ABSENCES']);
+            data.push([`École: ${schoolName}`]);
+            data.push([`Semaine du ${formatDate(dateDebut)} au ${formatDate(dateFin)}`]);
+            data.push([]);
+            data.push(['NOM', 'PRÉNOM', 'NIVEAU', 'STATUT', 'DATE(S) ABSENCE', 'JUSTIF. TRANSMIS AU DIRECTEUR', 'JUSTIF. TRANSMIS À LA CIRCO']);
+            
+            absentRows.forEach(checkbox => {
+                const row = checkbox.closest('tr');
+                const cells = row.querySelectorAll('td');
+                
+                const nom = cells[1].textContent;
+                const prenom = cells[2].textContent;
+                const niveau = cells[3].textContent;
+                const statut = cells[4].textContent.trim();
+                const datesAbsence = row.querySelector('.dates-absence').value;
+                const docDirecteur = row.querySelector('.doc-directeur').checked ? 'OUI' : 'NON';
+                const docCirco = row.querySelector('.doc-circo').checked ? 'OUI' : 'NON';
+                
+                data.push([nom, prenom, niveau, statut, datesAbsence, docDirecteur, docCirco]);
+            });
+            
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            
+            ws['!cols'] = [
+                { width: 20 },
+                { width: 18 },
+                { width: 15 },
+                { width: 10 },
+                { width: 20 },
+                { width: 20 },
+                { width: 20 }
+            ];
+            
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
+                { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws, 'Absences');
+            
+            const safeName = schoolName.replace(/[\/\s]/g, '_');
+            const fileName = `Absences_${safeName}_${formatDate(dateDebut).replace(/\//g, '-')}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            
+            alert(`✅ Fichier Excel généré avec succès !\n\n${absentRows.length} enseignant(s) absent(s)\n\nVous pouvez maintenant l'envoyer à la secrétaire.`);
+        }
+        
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const passwordModal = document.getElementById('password-modal');
+                if (passwordModal.classList.contains('active')) {
+                    validatePassword();
+                }
+            }
+        });
+        
+        window.onclick = function(event) {
+            const absenceModal = document.getElementById('absence-modal');
+            const passwordModal = document.getElementById('password-modal');
+            const pacteModal = document.getElementById('pacte-modal');
+            
+            if (event.target === absenceModal) {
+                closeAbsenceModal();
+            }
+            if (event.target === passwordModal) {
+                passwordModal.classList.remove('active');
+            }
+            if (event.target === pacteModal) {
+                closePacteModal();
+            }
+        }
+    </script>
+</body>
+</html>
