@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Framacalc → Excel</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+
+        .help-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid white;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .help-btn:hover {
+            background: white;
+            color: #27AE60;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #7f8c8d;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab:hover {
+            background: #ecf0f1;
+        }
+
+        .tab.active {
+            color: #2ECC71;
+            border-bottom-color: #2ECC71;
+            background: white;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 40px 30px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .steps {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 5px solid #2ECC71;
+        }
+
+        .steps h2 {
+            color: #2C3E50;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            color: #34495E;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .step-number {
+            background: linear-gradient(135deg, #3498DB, #2980B9);
+            color: white;
+            min-width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-weight: bold;
+            flex-shrink: 0;
+            box-shadow: 0 3px 10px rgba(52, 152, 219, 0.3);
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            font-weight: bold;
+            color: #2C3E50;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .step-detail {
+            color: #7f8c8d;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .highlight {
+            background: #FFF9C4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            color: #F57C00;
+        }
+
+        .paste-area {
+            width: 100%;
+            min-height: 200px;
+            max-height: 400px;
+            border: 3px dashed #3498DB;
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+
+        .paste-area:focus {
+            outline: none;
+            border-color: #2ECC71;
+            box-shadow: 0 0 0 4px rgba(46, 204, 113, 0.1);
+        }
+
+        .convert-btn {
+            width: 100%;
+            padding: 25px;
+            background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.4em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.4);
+        }
+
+        .convert-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(46, 204, 113, 0.6);
+        }
+
+        .convert-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress {
+            margin-top: 25px;
+            padding: 25px;
+            background: #ecf0f1;
+            border-radius: 12px;
+            display: none;
+            border-left: 5px solid #3498DB;
+        }
+
+        .progress.show {
+            display: block;
+        }
+
+        .progress h3 {
+            color: #2C3E50;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .progress-text {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #34495E;
+            line-height: 1.9;
+            max-height: 250px;
+            overflow-y: auto;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .success {
+            color: #27AE60;
+            font-weight: bold;
+        }
+
+        .error {
+            color: #E74C3C;
+            font-weight: bold;
+        }
+
+        .info {
+            color: #3498DB;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 25px;
+            background: #f8f9fa;
+            color: #7f8c8d;
+            font-size: 0.95em;
+        }
+
+        .tutorial-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid #3498DB;
+        }
+
+        .tutorial-section h3 {
+            color: #2C3E50;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .warning-box {
+            background: #FFF3E0;
+            border-left: 5px solid #FF9800;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .warning-box strong {
+            color: #E65100;
+        }
+
+        .success-box {
+            background: #E8F5E9;
+            border-left: 5px solid #4CAF50;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .code-block {
+            background: #2C3E50;
+            color: #ECF0F1;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <button class="help-btn" onclick="showTab('tutorial')">📚 Aide</button>
+            <h1>📊 Framacalc → Excel</h1>
+            <p>Conversion avec couleurs préservées</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('converter')">🚀 Convertir</div>
+            <div class="tab" onclick="showTab('tutorial')">📚 Tutoriel</div>
+        </div>
+
+        <!-- ONGLET CONVERSION -->
+        <div id="converter" class="tab-content active">
+            <div class="steps">
+                <h2>📝 Résumé rapide</h2>
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="step-title">Dans Framacalc</div>
+                        <div class="step-detail">Sélectionnez tout (Ctrl+A) → Copiez (Ctrl+C) → Ouvrez le Presse-papier → Onglet <span class="highlight">SocialCalc</span></div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="step-title">Dans le Presse-papier</div>
+                        <div class="step-detail">Sélectionnez tout le texte (Ctrl+A) → Copiez (Ctrl+C)</div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="step-title">Ici</div>
+                        <div class="step-detail">Collez ci-dessous (Ctrl+V) → Cliquez sur "Convertir"</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="warning-box">
+                ⚠️ <strong>IMPORTANT :</strong> Utilisez l'onglet <span class="highlight">SocialCalc</span> dans le presse-papier de Framacalc, pas TSV ou CSV !
+            </div>
+
+            <textarea 
+                id="pasteArea" 
+                class="paste-area" 
+                placeholder="Collez vos données Framacalc ici (Ctrl+V)...
+
+Format attendu :
+version:1.5
+cell:A1:t:ECOLE:cf:1
+cell:B1:t:NIVEAU:cf:1
+..."></textarea>
+
+            <button id="convertBtn" class="convert-btn" onclick="convertToExcel()">
+                🚀 Convertir en Excel
+            </button>
+
+            <div id="progress" class="progress">
+                <h3>📋 Progression</h3>
+                <div id="progressText" class="progress-text"></div>
+            </div>
+        </div>
+
+        <!-- ONGLET TUTORIEL -->
+        <div id="tutorial" class="tab-content">
+            <div class="tutorial-section">
+                <h3>🎯 Objectif</h3>
+                <p>Convertir votre tableau Framacalc en fichier Excel en préservant <strong>toutes les couleurs</strong>, le formatage et la structure.</p>
+            </div>
+
+            <div class="tutorial-section">
+                <h3>📖 Étapes détaillées</h3>
+                
+                <div class="step" style="margin-bottom: 20px;">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="step-title">Sélectionner dans Framacalc</div>
+                        <div class="step-detail">
+                            Ouvrez votre tableau Framacalc<br>
+                            Appuyez sur <span class="highlight">Ctrl+A</span> pour tout sélectionner<br>
+                            <em>Astuce : Vérifiez que les cellules colorées sont sélectionnées</em>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step" style="margin-bottom: 20px;">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="step-title">Copier</div>
+                        <div class="step-detail">
+                            Appuyez sur <span class="highlight">Ctrl+C</span> pour copier<br>
+                            Un message de confirmation peut apparaître
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step" style="margin-bottom: 20px;">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="step-title">Ouvrir le Presse-papier Framacalc</div>
+                        <div class="step-detail">
+                            Cliquez sur l'icône 📋 <strong>"Presse-papier"</strong> dans la barre d'outils de Framacalc<br>
+                            Une fenêtre s'ouvre avec plusieurs onglets (TSV, CSV, SocialCalc)
+                        </div>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    <strong>⭐ ÉTAPE CRUCIALE :</strong> Sélectionnez l'onglet <span class="highlight">SocialCalc</span> dans le presse-papier !
+                    <br><br>
+                    ❌ NE PAS utiliser TSV ou CSV<br>
+                    ✅ UNIQUEMENT SocialCalc<br>
+                    <br>
+                    <em>Pourquoi ? Seul SocialCalc contient les couleurs et le formatage !</em>
+                </div>
+
+                <div class="step" style="margin-bottom: 20px;">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <div class="step-title">Copier le format SocialCalc</div>
+                        <div class="step-detail">
+                            Dans la fenêtre presse-papier, vous verrez du texte comme :<br>
+                            <div class="code-block">
+version:1.5
+cell:A1:t:ECOLE:cf:1
+cell:B1:t:NIVEAU:cf:1
+cell:A2:t:Providence:bg:11:cf:1
+...
+                            </div>
+                            Sélectionnez <strong>tout</strong> ce texte : <span class="highlight">Ctrl+A</span><br>
+                            Copiez-le : <span class="highlight">Ctrl+C</span><br>
+                            Fermez la fenêtre presse-papier
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step" style="margin-bottom: 20px;">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <div class="step-title">Revenir ici</div>
+                        <div class="step-detail">
+                            Cliquez sur l'onglet <strong>"🚀 Convertir"</strong> en haut<br>
+                            Cliquez dans la zone de texte<br>
+                            Collez : <span class="highlight">Ctrl+V</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step" style="margin-bottom: 20px;">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <div class="step-title">Convertir</div>
+                        <div class="step-detail">
+                            Cliquez sur le bouton vert <strong>"Convertir en Excel"</strong><br>
+                            Attendez 2-5 secondes<br>
+                            Le fichier Excel se télécharge automatiquement ! 🎉
+                        </div>
+                    </div>
+                </div>
+
+                <div class="success-box">
+                    ✅ <strong>Terminé !</strong> Ouvrez le fichier Excel téléchargé et vérifiez que toutes les couleurs sont présentes !
+                </div>
+            </div>
+
+            <div class="tutorial-section">
+                <h3>❓ Problèmes courants</h3>
+                
+                <p style="margin: 15px 0;"><strong>❌ "Données invalides"</strong></p>
+                <p style="margin-left: 20px; color: #7f8c8d;">
+                    → Vérifiez que vous avez utilisé l'onglet <span class="highlight">SocialCalc</span><br>
+                    → Le texte doit commencer par "version:1.5"
+                </p>
+
+                <p style="margin: 15px 0;"><strong>🎨 Pas de couleurs dans Excel</strong></p>
+                <p style="margin-left: 20px; color: #7f8c8d;">
+                    → Assurez-vous d'utiliser l'onglet <span class="highlight">SocialCalc</span><br>
+                    → TSV et CSV ne contiennent PAS les couleurs
+                </p>
+
+                <p style="margin: 15px 0;"><strong>📋 Je ne trouve pas le presse-papier</strong></p>
+                <p style="margin-left: 20px; color: #7f8c8d;">
+                    → Cherchez l'icône 📋 dans la barre d'outils<br>
+                    → Ou : Menu → Modifier → Presse-papier
+                </p>
+            </div>
+
+            <div class="tutorial-section">
+                <h3>💡 Astuces</h3>
+                <ul style="margin-left: 20px; line-height: 2;">
+                    <li>Gardez ce fichier HTML dans vos favoris ou sur votre bureau</li>
+                    <li>Testez avec un petit tableau d'abord pour vous familiariser</li>
+                    <li>Partagez ce fichier avec vos collègues qui utilisent Framacalc</li>
+                    <li>Fonctionne sur tous les ordinateurs, aucune installation requise !</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            🔒 100% sécurisé - Traitement local uniquement - Aucune donnée envoyée
+        </div>
+    </div>
+
+    <script>
+        const colorMap = {
+            '1': 'FFCCE5FF', '2': 'FFFFD9D9', '3': 'FFCCFFCC', '4': 'FFCCFFEE',
+            '5': 'FFCCFFFF', '6': 'FFE6CCFF', '7': 'FFFFFFCC', '8': 'FFFFD9CC',
+            '9': 'FFFFCCFF', '10': 'FFFFCCE6', '11': 'FFFFEBCC', '12': 'FFFFFFCC',
+            '13': 'FFFFFFEE', '14': 'FFFFDDFF',
+        };
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            document.querySelector(`.tab:nth-child(${tabName === 'converter' ? 1 : 2})`).classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        function log(message, className = '') {
+            const progressDiv = document.getElementById('progress');
+            const progressText = document.getElementById('progressText');
+            
+            progressDiv.classList.add('show');
+            
+            const line = document.createElement('div');
+            if (className) line.className = className;
+            line.textContent = message;
+            progressText.appendChild(line);
+            progressText.scrollTop = progressText.scrollHeight;
+        }
+
+        function parseFramacalc(content) {
+            const cells = {};
+            const lines = content.trim().split('\n');
+
+            for (const line of lines) {
+                if (!line.startsWith('cell:')) continue;
+
+                const parts = line.split(':');
+                if (parts.length < 3) continue;
+
+                const cellRef = parts[1];
+                const cellData = { value: '', bgColor: null };
+
+                if (line.includes(':t:')) {
+                    const match = line.match(/:t:([^:]+?)(?::bg:|:cf:|:vtf:|$)/);
+                    if (match) {
+                        cellData.value = match[1].replace(/\\c/g, ',').trim();
+                    }
+                } else if (line.includes(':v:')) {
+                    const match = line.match(/:v:(\d+)/);
+                    if (match) {
+                        cellData.value = parseInt(match[1]);
+                    }
+                } else if (line.includes(':vtf:')) {
+                    const match = line.match(/:tiSELECT:([^:]+):SELECT/);
+                    if (match) {
+                        cellData.value = match[1];
+                    }
+                } else if (line.includes(':vtc:nd:')) {
+                    const match = line.match(/:vtc:nd:\d+:([^:]+)/);
+                    if (match) {
+                        cellData.value = match[1];
+                    }
+                } else if (line.includes(':vtc::::')) {
+                    cellData.value = '';
+                }
+
+                const bgMatch = line.match(/:bg:(\d+)/);
+                if (bgMatch && colorMap[bgMatch[1]]) {
+                    cellData.bgColor = colorMap[bgMatch[1]];
+                }
+
+                cells[cellRef] = cellData;
+            }
+
+            return cells;
+        }
+
+        async function convertToExcel() {
+            const pasteArea = document.getElementById('pasteArea');
+            const progressText = document.getElementById('progressText');
+            const convertBtn = document.getElementById('convertBtn');
+            
+            progressText.innerHTML = '';
+            
+            log('═'.repeat(60));
+            log('🔄 CONVERSION', 'info');
+            log('═'.repeat(60));
+            log('');
+            
+            const content = pasteArea.value.trim();
+            
+            if (!content || content.length < 10) {
+                log('❌ La zone de texte est vide!', 'error');
+                log('Suivez le tutoriel (onglet "Tutoriel")', 'error');
+                return;
+            }
+            
+            if (!content.includes('cell:')) {
+                log('❌ Format invalide!', 'error');
+                log('Utilisez l\'onglet SocialCalc du presse-papier Framacalc', 'error');
+                return;
+            }
+            
+            convertBtn.disabled = true;
+            
+            try {
+                log('🔍 Analyse...');
+                const cells = parseFramacalc(content);
+                
+                const coloredCells = Object.values(cells).filter(c => c.bgColor).length;
+                
+                log(`✅ ${Object.keys(cells).length} cellules`, 'success');
+                log(`🎨 ${coloredCells} cellules colorées`, 'success');
+                log('');
+                log('📊 Création Excel...');
+                
+                const workbook = new ExcelJS.Workbook();
+                const worksheet = workbook.addWorksheet('Données Framacalc');
+                
+                for (const [cellRef, cellData] of Object.entries(cells)) {
+                    const cell = worksheet.getCell(cellRef);
+                    cell.value = cellData.value;
+                    
+                    if (cellData.bgColor) {
+                        cell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: cellData.bgColor }
+                        };
+                    }
+                    
+                    if (cellRef.match(/[A-Z]+1$/)) {
+                        cell.font = { bold: true, size: 11 };
+                        cell.alignment = { 
+                            horizontal: 'center', 
+                            vertical: 'middle',
+                            wrapText: true 
+                        };
+                    }
+                }
+                
+                worksheet.columns = [
+                    { width: 20 }, { width: 20 }, { width: 20 }, { width: 20 },
+                    { width: 18 }, { width: 10 }, { width: 18 }, { width: 22 }, { width: 22 }
+                ];
+                
+                worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+                
+                log('✅ Styles appliqués', 'success');
+                log('');
+                
+                const buffer = await workbook.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { 
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                });
+                
+                const now = new Date();
+                const timestamp = now.toISOString().slice(0,19).replace(/[T:]/g, '-');
+                const filename = `framacalc_${timestamp}.xlsx`;
+                
+                saveAs(blob, filename);
+                
+                log('═'.repeat(60));
+                log('✅ SUCCÈS!', 'success');
+                log('═'.repeat(60));
+                log('');
+                log(`💾 ${filename}`, 'success');
+                log(`✓ ${coloredCells} couleurs préservées`, 'success');
+                log('');
+                log('🎉 Ouvrez le fichier!', 'success');
+                
+            } catch (error) {
+                log('');
+                log('❌ ERREUR: ' + error.message, 'error');
+                console.error(error);
+            } finally {
+                convertBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
